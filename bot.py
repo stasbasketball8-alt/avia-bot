@@ -20,276 +20,64 @@ AIRLINES = {
     "4B": "Авиастар",
 }
 
-# ---------- Справочник аэропортов (IATA -> русское имя) ----------
+# ---------- Справочник аэропортов ----------
 AIRPORTS = {
-    # Китай
-    "PKX": "Пекин (Дасин)",
-    "PEK": "Пекин (Столичный)",
-    "PVG": "Шанхай (Пудун)",
-    "SHA": "Шанхай (Хунцяо)",
-    "CAN": "Гуанчжоу",
-    "SZX": "Шэньчжэнь",
-    "CTU": "Чэнду",
-    "CKG": "Чунцин",
-    "XIY": "Сиань",
-    "HGH": "Ханчжоу",
-    "NKG": "Нанкин",
-    "KMG": "Куньмин",
-    "XMN": "Сямынь",
-    "TAO": "Циндао",
-    "CSX": "Чанша",
-    "URC": "Урумчи",
-    "DLC": "Далянь",
-    "FOC": "Фучжоу",
-    "HRB": "Харбин",
-    "SHE": "Шэньян",
-    "WUH": "Ухань",
-    "KWL": "Гуйлинь",
-    "NGB": "Нинбо",
-    "SJW": "Шицзячжуан",
-    "TNA": "Цзинань",
-    "HFE": "Хэфэй",
-    "KHN": "Наньчан",
-    "ZUH": "Чжухай",
-    "LHW": "Ланьчжоу",
-    "INC": "Иньчуань",
-    "HET": "Хух-Хото",
-    "BAV": "Баотоу",
-    "WXN": "Ваньчжоу",
-    "JJN": "Цюаньчжоу",
-    "NNG": "Наньнин",
-    "SWA": "Шаньтоу",
-    "YNZ": "Яньчэн",
-    "YNT": "Яньтай",
-    "WEH": "Вэйхай",
-    "ENH": "Эньши",
-    "LYI": "Линьи",
-    "XUZ": "Сюйчжоу",
-    "WEF": "Вэйфан",
-    "DOY": "Дунъин",
-    "JNG": "Цзинин",
-    "Riz": "Жичжао",
-    "HYN": "Тайчжоу",
-    "HSN": "Чжоушань",
-    "LYG": "Ляньюньган",
-    "NTG": "Наньтун",
-    "YTY": "Янчжоу",
-    "CZX": "Чанчжоу",
-    "WUX": "Уси",
-    "HZA": "Хэцзэ",
-    "JHG": "Цзинхун",
-    "LJG": "Лицзян",
-    "DIG": "Шангри-Ла",
-    "ZAT": "Чжаотун",
-    "LUM": "Манши",
-    "BSD": "Баошань",
-    "TCZ": "Тэнчун",
-    "LXA": "Лхаса",
-    "YIC": "Ичунь (Цзянси)",
-    "KOW": "Ганьчжоу",
-    "YIH": "Ичан",
-    "BFU": "Бэнбу",
-    "FUG": "Фуян",
-    "AQG": "Аньцин",
-    "JXA": "Цзиси",
-    "JGD": "Цзягэдаци",
-    "NZH": "Маньчжоули",
-    "HLD": "Хайлар",
-    "XIL": "Силинь-Хото",
-    "TGO": "Тунляо",
-    "NZL": "Чжаланьтунь",
-    "YIE": "Аршань",
-    "ERL": "Эрэн-Хото",
-    "DSN": "Дондшэн",
-    "HDG": "Ханьдань",
-    "CIH": "Чанчжи",
-    "WUT": "Синьчжоу",
-    "LLV": "Люйлян",
-    "YGH": "Юнцзи",
-    "AOG": "Аньшань",
-    "DDG": "Даньдун",
-    "JNZ": "Цзиньчжоу",
-    "CHG": "Чаоян",
-    "XFN": "Сянъян",
-    "HPG": "Шэньнунцзя",
-    "HUZ": "Хуэйчжоу",
-    "FUO": "Фошань",
-    "MXZ": "Мэйчжоу",
-    "ZHA": "Чжаньцзян",
-    "BHY": "Бэйхай",
-    "LYA": "Лоян",
-    "NNY": "Наньян",
-    "WZU": "Вэйчжоу",
-    "DYG": "Чжанцзяцзе",
-    "HJJ": "Хуайхуа",
-    "CGD": "Чандэ",
-    "HNY": "Хэнъян",
-    "LLF": "Юнчжоу",
-    "LCX": "Ляньчэн",
-    "YBP": "Ибинь",
-    "GYS": "Гуанъюань",
-    "LZO": "Лучжоу",
-    "NAO": "Наньчун",
-    "DCY": "Даочэн",
-    "JZH": "Цзючжайгоу",
-    "PZI": "Паньчжихуа",
-    "XIC": "Сичан",
-    "XNT": "Синтай",
-    "AVA": "Аньшунь",
-    "ACX": "Синъи",
-    "KWE": "Гуйян",
-    "TEN": "Тунжэнь",
-    "HXD": "Дэлинха",
-    "HMI": "Хами",
-    "KRL": "Корла",
-    "KCA": "Куча",
-    "IQM": "Цемо",
-    "YIN": "Инин",
-    "NLT": "Наймань",
-    "HTN": "Хотан",
-    "AKU": "Аксу",
-    "AAT": "Алтай",
-    "TCG": "Тачэн",
-    "KJI": "Канас",
-    "FYN": "Фу Юнь",
-    "ZYI": "Цзуньи",
-    "WMT": "Вэйнин",
-    "LPF": "Люпаньшуй",
-    "BFJ": "Бицзе",
-    "HZH": "Липин",
-    "KJH": "Кайли",
-    "TXN": "Хуаншань",
-    "JIQ": "Цяньцзян",
-    "CQW": "Ваньчжоу",
-    "XSB": "Шахджаханпур",
-    # Россия
-    "SVO": "Шереметьево",
-    "SVO1": "Шереметьево-1",
-    "SVO2": "Шереметьево-2",
-    "DME": "Домодедово",
-    "VKO": "Внуково",
-    "LED": "Пулково",
-    "KHV": "Хабаровск",
-    "VVO": "Владивосток",
-    "IKT": "Иркутск",
-    "OVB": "Новосибирск (Толмачёво)",
-    "KJA": "Красноярск",
-    "UFA": "Уфа",
-    "KZN": "Казань",
-    "PEZ": "Пенза",
-    "KUF": "Самара",
-    "ROV": "Ростов-на-Дону",
-    "AER": "Сочи",
-    "MRV": "Минеральные Воды",
-    "EGO": "Белгород",
-    "VOZ": "Воронеж",
-    "LPK": "Липецк",
-    "TBW": "Тамбов",
-    "BCX": "Белорецк",
-    "UUA": "Бугульма",
-    "JOK": "Йошкар-Ола",
-    "CSY": "Чебоксары",
-    "KSZ": "Котлас",
-    "VKT": "Воркута",
-    "USK": "Усинск",
-    "PEX": "Печора",
-    "SCT": "Сахалин (Южно-Сахалинск)",
-    "UUS": "Южно-Сахалинск",
-    "PKC": "Петропавловск-Камчатский",
-    "GDX": "Магадан",
-    "DYR": "Анадырь",
-    "PVS": "Провидения",
-    "BQG": "Богородское",
-    "TJM": "Тюмень",
-    "SVX": "Екатеринбург (Кольцово)",
-    "CEK": "Челябинск",
-    "MQF": "Магнитогорск",
-    "NBC": "Нижнекамск (Бегишево)",
-    "KGP": "Когалым",
-    "NFG": "Нижневартовск",
-    "SGC": "Сургут",
-    "HMA": "Ханты-Мансийск",
-    "NYM": "Надым",
-    "SLY": "Салехард",
-    "NOJ": "Ноябрьск",
-    "TQL": "Тарко-Сале",
-    "RAT": "Радужный",
-    "URJ": "Урай",
-    "IJK": "Ижевск",
-    "KMW": "Кострома",
-    "RYB": "Рыбинск",
-    "IWA": "Иваново",
-    "VGD": "Вологда",
-    "VLU": "Великие Луки",
-    "PSK": "Псков",
-    "KLF": "Калуга",
-    "RVZ": "Рассказово",
-    "OSF": "Остафьево",
-    "BKA": "Быково",
-    "MOW": "Москва (обобщённо)",
-    "ZIA": "Жуковский",
-    "URS": "Курск",
-    "URO": "Орёл",
-    "KLD": "Тверь (Мигалово)",
-    "RYZ": "Рязань",
-    "NNM": "Нарьян-Мар",
-    "VUS": "Великий Устюг",
-    "CEE": "Череповец",
-    "KVX": "Киров",
-    "KRR": "Краснодар",
-    "EIK": "Ейск",
-    "AAQ": "Анапа",
-    "TGK": "Таганрог",
-    "ESL": "Элиста",
-    "OGZ": "Владикавказ",
-    "GRV": "Грозный",
-    "MCX": "Махачкала",
-    "NAL": "Нальчик",
-    "STW": "Ставрополь",
-    "ASF": "Астрахань",
-    "VOG": "Волгоград",
-    "SOK": "Саратов",
-    "RTW": "Саратов (Центральный)",
-    "ULV": "Ульяновск",
-    "UIK": "Усть-Илимск",
-    "BTK": "Братск",
-    "NZR": "Улан-Удэ",
-    "HTA": "Чита",
-    "BQS": "Благовещенск",
-    "NER": "Нерюнгри",
-    "MJZ": "Мирный",
-    "OLZ": "Олёкминск",
-    "LKN": "Ленск",
-    "PYJ": "Полярный",
-    "IXT": "Пасани",
-    "TOD": "Тируваннамалай",
+    "PKX": "Пекин (Дасин)", "PEK": "Пекин (Столичный)", "PVG": "Шанхай (Пудун)",
+    "SHA": "Шанхай (Хунцяо)", "CAN": "Гуанчжоу", "SZX": "Шэньчжэнь",
+    "CTU": "Чэнду", "CKG": "Чунцин", "XIY": "Сиань", "HGH": "Ханчжоу",
+    "NKG": "Нанкин", "KMG": "Куньмин", "XMN": "Сямынь", "TAO": "Циндао",
+    "CSX": "Чанша", "URC": "Урумчи", "DLC": "Далянь", "FOC": "Фучжоу",
+    "HRB": "Харбин", "SHE": "Шэньян", "WUH": "Ухань", "KWL": "Гуйлинь",
+    "NGB": "Нинбо", "SJW": "Шицзячжуан", "TNA": "Цзинань", "HFE": "Хэфэй",
+    "KHN": "Наньчан", "ZUH": "Чжухай", "LHW": "Ланьчжоу", "INC": "Иньчуань",
+    "HET": "Хух-Хото", "BAV": "Баотоу", "WXN": "Ваньчжоу", "JJN": "Цюаньчжоу",
+    "NNG": "Наньнин", "SWA": "Шаньтоу", "YNZ": "Яньчэн", "YNT": "Яньтай",
+    "WEH": "Вэйхай", "ENH": "Эньши", "LYI": "Линьи", "XUZ": "Сюйчжоу",
+    "WEF": "Вэйфан", "DOY": "Дунъин", "JNG": "Цзинин", "HYN": "Тайчжоу",
+    "HSN": "Чжоушань", "LYG": "Ляньюньган", "NTG": "Наньтун", "YTY": "Янчжоу",
+    "CZX": "Чанчжоу", "WUX": "Уси", "HZA": "Хэцзэ", "JHG": "Цзинхун",
+    "LJG": "Лицзян", "DIG": "Шангри-Ла", "ZAT": "Чжаотун", "LUM": "Манши",
+    "BSD": "Баошань", "TCZ": "Тэнчун", "LXA": "Лхаса", "YIC": "Ичунь",
+    "KOW": "Ганьчжоу", "YIH": "Ичан", "BFU": "Бэнбу", "FUG": "Фуян",
+    "AQG": "Аньцин", "JXA": "Цзиси", "JGD": "Цзягэдаци", "NZH": "Маньчжоули",
+    "HLD": "Хайлар", "XIL": "Силинь-Хото", "TGO": "Тунляо", "NZL": "Чжаланьтунь",
+    "YIE": "Аршань", "ERL": "Эрэн-Хото", "DSN": "Дондшэн", "HDG": "Ханьдань",
+    "CIH": "Чанчжи", "WUT": "Синьчжоу", "LLV": "Люйлян", "YGH": "Юнцзи",
+    "AOG": "Аньшань", "DDG": "Даньдун", "JNZ": "Цзиньчжоу", "CHG": "Чаоян",
+    "XFN": "Сянъян", "HPG": "Шэньнунцзя", "HUZ": "Хуэйчжоу", "FUO": "Фошань",
+    "MXZ": "Мэйчжоу", "ZHA": "Чжаньцзян", "BHY": "Бэйхай", "LYA": "Лоян",
+    "NNY": "Наньян", "WZU": "Вэйчжоу", "DYG": "Чжанцзяцзе", "HJJ": "Хуайхуа",
+    "CGD": "Чандэ", "HNY": "Хэнъян", "LLF": "Юнчжоу", "LCX": "Ляньчэн",
+    "YBP": "Ибинь", "GYS": "Гуанъюань", "LZO": "Лучжоу", "NAO": "Наньчун",
+    "DCY": "Даочэн", "JZH": "Цзючжайгоу", "PZI": "Паньчжихуа", "XIC": "Сичан",
+    "SVO": "Шереметьево", "SVO1": "Шереметьево-1", "DME": "Домодедово",
+    "VKO": "Внуково", "LED": "Пулково", "KHV": "Хабаровск", "VVO": "Владивосток",
+    "IKT": "Иркутск", "OVB": "Новосибирск", "KJA": "Красноярск", "UFA": "Уфа",
+    "KZN": "Казань", "KUF": "Самара", "ROV": "Ростов-на-Дону", "AER": "Сочи",
+    "MRV": "Минеральные Воды", "KRR": "Краснодар", "VOG": "Волгоград",
+    "SOK": "Саратов", "ULV": "Ульяновск", "CEK": "Челябинск", "TJM": "Тюмень",
+    "SVX": "Екатеринбург", "MQF": "Магнитогорск", "NBC": "Нижнекамск",
+    "NFG": "Нижневартовск", "SGC": "Сургут", "HMA": "Ханты-Мансийск",
 }
 
 # ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
 def parse_etd(etd_str):
-    """Преобразует ETD: '21st' -> '21го числа', '18 MAY' -> '18 мая'"""
     if not etd_str:
         return "неизвестно"
-    etd_str = etd_str.strip()
     # Убираем st, nd, rd, th
     etd_clean = re.sub(r'(st|nd|rd|th)', '', etd_str, flags=re.I)
-    # Месяцы
-    months = {
-        "JAN":"января", "FEB":"февраля", "MAR":"марта", "APR":"апреля",
-        "MAY":"мая", "JUN":"июня", "JUL":"июля", "AUG":"августа",
-        "SEP":"сентября", "OCT":"октября", "NOV":"ноября", "DEC":"декабря"
-    }
+    months = {"JAN":"января","FEB":"февраля","MAR":"марта","APR":"апреля",
+              "MAY":"мая","JUN":"июня","JUL":"июля","AUG":"августа",
+              "SEP":"сентября","OCT":"октября","NOV":"ноября","DEC":"декабря"}
     for eng, rus in months.items():
         if eng in etd_clean.upper():
             etd_clean = etd_clean.upper().replace(eng, rus)
             return etd_clean.capitalize()
-    # Если просто число
-    if etd_clean.isdigit():
+    if etd_clean.strip().isdigit():
         return f"{etd_clean}го числа"
     return etd_clean
 
 def parse_frequency(freq_str):
-    """Преобразует D12467 -> '5 раз/нед', Daily -> 'ежедневно'"""
     if not freq_str:
         return "расписание не указано"
     freq_str = freq_str.strip().upper()
@@ -302,7 +90,6 @@ def parse_frequency(freq_str):
     return freq_str
 
 def parse_route(route_str):
-    """PKX-SVO1 -> 'Пекин (Дасин)-Шереметьево1'"""
     if not route_str:
         return "маршрут не указан"
     parts = route_str.split('-')
@@ -312,24 +99,7 @@ def parse_route(route_str):
         return f"{orig}-{dest}"
     return route_str
 
-def extract_rate_and_extra_from_line(line):
-    """Из строки возвращает (rate, extra_fee)"""
-    rate = None
-    extra = 0.0
-    # Ищем базовый тариф: число перед USD/KG или /KG
-    match = re.search(r'(\d+(?:\.\d+)?)\s*USD\s*/\s*KG', line, re.I)
-    if not match:
-        match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
-    if match:
-        rate = float(match.group(1))
-    # Ищем доп. фиксированную сумму: +159USD
-    match_extra = re.search(r'\+\s*(\d+)\s*USD', line, re.I)
-    if match_extra:
-        extra = float(match_extra.group(1))
-    return rate, extra
-
 def extract_airline_code(line):
-    """Извлекает код авиакомпании из строки"""
     words = line.split()
     for word in words:
         if word.upper() in AIRLINES:
@@ -337,14 +107,10 @@ def extract_airline_code(line):
     return None
 
 def extract_route(line):
-    """Ищет XXX-XXXX (аэропорты)"""
     match = re.search(r'([A-Z]{3})-([A-Z0-9]{3,4})', line)
-    if match:
-        return match.group(0)
-    return None
+    return match.group(0) if match else None
 
 def extract_frequency(line):
-    """Ищет D1234567 или Daily/DAILY"""
     match = re.search(r'\b(D[1-7]+)\b', line, re.I)
     if match:
         return match.group(1).upper()
@@ -353,113 +119,153 @@ def extract_frequency(line):
     return None
 
 def extract_etd(line):
-    """Ищет ETD 21st или ETD 18 MAY, или просто 21st/18 MAY"""
-    match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?\s*(?:[A-Z]+)?)', line, re.I)
+    # Ищем ETD 21st, ETD 22nd+... или просто 21st, 22nd (даже если после +)
+    # Сначала ищем "ETD" затем пробелы, затем число с суффиксом, затем возможно '+' или конец
+    match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?)(?:\+|\s|$)', line, re.I)
     if match:
         return match.group(1)
-    # Если нет ETD, ищем число с st/nd/rd/th или месяц
-    match2 = re.search(r'\b(\d+(?:st|nd|rd|th)?\s*(?:[A-Z]{3,})?)\b', line)
+    # Если нет ETD, ищем просто число с суффиксом (без плюса или в начале)
+    match2 = re.search(r'\b(\d+(?:st|nd|rd|th)?)\b', line, re.I)
     if match2 and not match2.group(0).isdigit():
         return match2.group(0)
     return None
 
+def extract_rate_and_extra_from_line(line):
+    rate = None
+    extra = 0.0
+    # Базовый тариф
+    match = re.search(r'(\d+(?:\.\d+)?)\s*USD\s*/\s*KG', line, re.I)
+    if not match:
+        match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
+    if match:
+        rate = float(match.group(1))
+    # Фиксированные сборы в строке: +159USD, +Forklift USD20/BL
+    # Ищем +число USD
+    match_extra = re.search(r'\+\s*(\d+)\s*USD', line, re.I)
+    if match_extra:
+        extra += float(match_extra.group(1))
+    # Ищем +Forklift USD20/BL
+    match_fork = re.search(r'\+.*?Forklift\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
+    if match_fork:
+        extra += float(match_fork.group(1))
+    # Ищем +Label fee USD0.05/KG (Min USD25/BL) — извлечём пока как доп. сбор, но лучше обработать отдельно
+    match_label = re.search(r'\+.*?Label fee\s*USD(\d+(?:\.\d+)?)/KG', line, re.I)
+    if match_label:
+        # Не добавляем сразу, т.к. зависит от веса. Вернём в виде специального маркера?
+        # Пока добавим позже в process_offer, передадим эту информацию
+        # Для упрощения: запишем найденный label fee в глобальную переменную? Нехорошо.
+        # Лучше вернуть дополнительный словарь. Но для простоты пока добавим как extra = 0, а label fee обработаем в parse_common_fees.
+        # В общем блоке тоже может быть label fee. Решим: если есть в строке, передадим в process_offer через специальный флаг.
+        # Я сделаю так: возвращаем rate, extra, и дополнительно извлекаем label_fee_per_kg и label_min.
+        pass
+    return rate, extra
+
+def extract_inline_fees(line):
+    """Извлекает из строки перевозчика сборы, зависящие от веса (label fee, back board и т.п.)"""
+    fees = []
+    # Label fee USD0.05/KG (Min USD25/BL)
+    match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', line, re.I)
+    if match:
+        fees.append(('label', float(match.group(1)), float(match.group(2))))
+    # Forklift (уже как фикс в extra, но можно и тут)
+    # Back board fee в строке?
+    match = re.search(r'back board fee\s*USD(\d+(?:\.\d+)?)/KG', line, re.I)
+    if match:
+        fees.append(('backboard', float(match.group(1)), None))
+    return fees
+
 def parse_common_fees(fees_block, origin_airport, weight):
-    """Из блока общих сборов возвращает сумму"""
     total = 0.0
     if not fees_block:
         return total
-
-    # AWB: USD35/BL
+    # AWB
     match = re.search(r'AWB:\s*USD(\d+(?:\.\d+)?)/BL', fees_block, re.I)
     if match:
         total += float(match.group(1))
-    # CC: USD40/BL
+    # CC
     match = re.search(r'CC:\s*USD(\d+(?:\.\d+)?)/BL', fees_block, re.I)
     if match:
         total += float(match.group(1))
-    # HC: USD30
+    # HC
     match = re.search(r'HC:\s*USD(\d+(?:\.\d+)?)(?:/BL)?', fees_block, re.I)
     if match:
         total += float(match.group(1))
-    # Pick up fee: USD60 TO PVG или USD65 TO PKX/CAN
+    # Pick up fee
     if origin_airport:
-        # Ищем точное совпадение TO XXX
         pattern = rf'Pick up fee:.*?USD(\d+(?:\.\d+)?)\s*TO\s+.*?\b{origin_airport}\b'
         match = re.search(pattern, fees_block, re.I | re.DOTALL)
-        if match:
-            total += float(match.group(1))
-        else:
-            # Возможно аэропорты перечислены через слэш: PKX/CAN
+        if not match:
             pattern2 = rf'Pick up fee:.*?USD(\d+(?:\.\d+)?)\s*TO\s+([A-Z/]+)'
             m2 = re.search(pattern2, fees_block, re.I)
-            if m2:
-                airports_str = m2.group(2).upper()
-                if origin_airport in airports_str.split('/'):
-                    total += float(m2.group(1))
-    # back board fee USD0.05/KG
+            if m2 and origin_airport in m2.group(2).upper().split('/'):
+                total += float(m2.group(1))
+        else:
+            total += float(match.group(1))
+    # back board fee
     match = re.search(r'back board fee\s*USD(\d+(?:\.\d+)?)/KG', fees_block, re.I)
     if match:
         total += float(match.group(1)) * weight
-    # Label fee USD0.05/KG (Min USD25/BL)
-    match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL', fees_block, re.I)
+    # Label fee
+    match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', fees_block, re.I)
     if match:
         per_kg = float(match.group(1))
         min_val = float(match.group(2))
-        val = per_kg * weight
-        total += max(val, min_val)
-    # Customs: 50/BL
+        total += max(per_kg * weight, min_val)
+    # Customs
     match = re.search(r'Customs:\s*(\d+(?:\.\d+)?)/BL', fees_block, re.I)
     if match:
         total += float(match.group(1))
-    # Doc: 20/BL
+    # Doc
     match = re.search(r'Doc:\s*(\d+(?:\.\d+)?)/BL', fees_block, re.I)
     if match:
         total += float(match.group(1))
-    # TC: 0.1/KG, Min 25/Shpt
+    # TC
     match = re.search(r'TC:\s*(\d+(?:\.\d+)?)/KG,\s*Min\s*(\d+)/Shpt', fees_block, re.I)
     if match:
         per_kg = float(match.group(1))
         min_val = float(match.group(2))
-        val = per_kg * weight
-        total += max(val, min_val)
+        total += max(per_kg * weight, min_val)
     return total
 
 def process_offer(offer_line, common_fees_block, weight):
-    """Обрабатывает одну строку с авиакомпанией. Возвращает итоговую строку или None"""
     airline_code = extract_airline_code(offer_line)
     if not airline_code:
         return None
     airline_name = AIRLINES.get(airline_code, airline_code)
-
     route_str = extract_route(offer_line)
     if not route_str:
         return None
     route_pretty = parse_route(route_str)
     origin_airport = route_str.split('-')[0].upper()
-
     freq = extract_frequency(offer_line)
     if not freq:
         return None
     freq_pretty = parse_frequency(freq)
-
     etd = extract_etd(offer_line)
     if not etd:
         return None
     etd_pretty = parse_etd(etd)
-
-    rate, extra_in_line = extract_rate_and_extra_from_line(offer_line)
+    rate, extra = extract_rate_and_extra_from_line(offer_line)
     if rate is None:
         return None
-
-    total = rate * weight + extra_in_line
+    total = rate * weight + extra
+    # Добавляем общие сборы
     total += parse_common_fees(common_fees_block, origin_airport, weight)
-
+    # Обрабатываем инлайн сборы из строки перевозчика (label fee и т.п.)
+    inline_fees = extract_inline_fees(offer_line)
+    for fee_type, val, min_val in inline_fees:
+        if fee_type == 'label':
+            fee_amount = val * weight
+            if min_val:
+                fee_amount = max(fee_amount, min_val)
+            total += fee_amount
+        elif fee_type == 'backboard':
+            total += val * weight
     total_rounded = round(total)
     result = f"{total_rounded} долларов {airline_name}, {route_pretty}, {freq_pretty}, места с {etd_pretty}"
     return result
 
 def split_into_offers_and_common_fees(full_text):
-    """Разделяет текст на список строк-офферов и блок общих сборов"""
     lines = full_text.strip().splitlines()
     offers = []
     common_lines = []
@@ -499,25 +305,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if weight is None:
         await update.message.reply_text("⚠️ Сначала укажите вес командой /weight 100")
         return
-
     text = update.message.text
     offers, common_block = split_into_offers_and_common_fees(text)
     if not offers:
         await update.message.reply_text("⚠️ Не удалось найти строки с авиакомпаниями. Проверьте формат.")
         return
-
     results = []
     for offer in offers:
         res = process_offer(offer, common_block, weight)
         if res:
             results.append(res)
         else:
-            # Показываем, какую строку не смогли разобрать
             results.append(f"❌ Не удалось разобрать: {offer[:100]}...")
     if results:
         await update.message.reply_text("\n\n".join(results))
     else:
-        await update.message.reply_text("⚠️ Ни одной ставки не обработано. Возможно, не хватает данных (маршрут, частота, ETD, тариф).")
+        await update.message.reply_text("⚠️ Ни одной ставки не обработано. Возможно, не хватает данных.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
