@@ -20,7 +20,7 @@ AIRLINES = {
     "4B": "Авиастар",
 }
 
-# ---------- Справочник аэропортов ----------
+# ---------- Справочник аэропортов (сокращённо, но вы можете добавить свои) ----------
 AIRPORTS = {
     "PKX": "Пекин (Дасин)", "PEK": "Пекин (Столичный)", "PVG": "Шанхай (Пудун)",
     "SHA": "Шанхай (Хунцяо)", "CAN": "Гуанчжоу", "SZX": "Шэньчжэнь",
@@ -58,13 +58,20 @@ AIRPORTS = {
     "SOK": "Саратов", "ULV": "Ульяновск", "CEK": "Челябинск", "TJM": "Тюмень",
     "SVX": "Екатеринбург", "MQF": "Магнитогорск", "NBC": "Нижнекамск",
     "NFG": "Нижневартовск", "SGC": "Сургут", "HMA": "Ханты-Мансийск",
+    "BQS": "Благовещенск",  # добавим для маршрута HRB-BQS-SVO
 }
 
 # ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
+def fix_typos(text):
+    """Исправляет частые опечатки в ставках"""
+    text = text.replace("UDS/KG", "USD/KG")
+    text = text.replace("UDS/ KG", "USD/KG")
+    return text
+
 def parse_etd(etd_str):
     if not etd_str:
         return "неизвестно"
-    # Убираем st, nd, rd, th
+    # Удаляем суффиксы st, nd, rd, th
     etd_clean = re.sub(r'(st|nd|rd|th)', '', etd_str, flags=re.I)
     months = {"JAN":"января","FEB":"февраля","MAR":"марта","APR":"апреля",
               "MAY":"мая","JUN":"июня","JUL":"июля","AUG":"августа",
@@ -83,6 +90,9 @@ def parse_frequency(freq_str):
     freq_str = freq_str.strip().upper()
     if freq_str == "DAILY":
         return "ежедневно"
+    # Поддержка DAY37 -> D37, DAY2457 -> D2457
+    if freq_str.startswith("DAY"):
+        freq_str = "D" + freq_str[3:]
     match = re.search(r'D([1-7]+)', freq_str)
     if match:
         days = len(set(match.group(1)))
@@ -92,10 +102,12 @@ def parse_frequency(freq_str):
 def parse_route(route_str):
     if not route_str:
         return "маршрут не указан"
+    # Разделяем по дефису, может быть 2 или 3 части
     parts = route_str.split('-')
-    if len(parts) == 2:
+    if len(parts) >= 2:
         orig = AIRPORTS.get(parts[0].upper(), parts[0])
-        dest = AIRPORTS.get(parts[1].upper(), parts[1])
+        # Если три части, соединяем пункт назначения как последнюю
+        dest = AIRPORTS.get(parts[-1].upper(), parts[-1])
         return f"{orig}-{dest}"
     return route_str
 
@@ -107,11 +119,18 @@ def extract_airline_code(line):
     return None
 
 def extract_route(line):
-    match = re.search(r'([A-Z]{3})-([A-Z0-9]{3,4})', line)
-    return match.group(0) if match else None
+    # Ищем цепочку из 2 или 3 аэропортов: XXX-XXX или XXX-XXX-XXX
+    match = re.search(r'([A-Z]{3})-([A-Z]{3})(?:-([A-Z0-9]{3,4}))?', line)
+    if match:
+        if match.group(3):
+            return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+        else:
+            return f"{match.group(1)}-{match.group(2)}"
+    return None
 
 def extract_frequency(line):
-    match = re.search(r'\b(D[1-7]+)\b', line, re.I)
+    # Ищем D1234567 или DAY1234567
+    match = re.search(r'\b(D(?:AY)?[1-7]+)\b', line, re.I)
     if match:
         return match.group(1).upper()
     if re.search(r'\bDAILY\b', line, re.I):
@@ -119,18 +138,18 @@ def extract_frequency(line):
     return None
 
 def extract_etd(line):
-    # Ищем ETD 21st, ETD 22nd+... или просто 21st, 22nd (даже если после +)
-    # Сначала ищем "ETD" затем пробелы, затем число с суффиксом, затем возможно '+' или конец
-    match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?)(?:\+|\s|$)', line, re.I)
+    # Ищем ETD 20TH, ETD 26TH, или просто 20TH, 26TH
+    match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?)', line, re.I)
     if match:
         return match.group(1)
-    # Если нет ETD, ищем просто число с суффиксом (без плюса или в начале)
+    # Если нет ETD, ищем просто число с суффиксом в конце слова
     match2 = re.search(r'\b(\d+(?:st|nd|rd|th)?)\b', line, re.I)
     if match2 and not match2.group(0).isdigit():
         return match2.group(0)
     return None
 
 def extract_rate_and_extra_from_line(line):
+    line = fix_typos(line)
     rate = None
     extra = 0.0
     # Базовый тариф
@@ -139,39 +158,22 @@ def extract_rate_and_extra_from_line(line):
         match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
     if match:
         rate = float(match.group(1))
-    # Фиксированные сборы в строке: +159USD, +Forklift USD20/BL
-    # Ищем +число USD
+    # Фиксированные сборы: + 445 USD, +360 USD и т.д.
     match_extra = re.search(r'\+\s*(\d+)\s*USD', line, re.I)
     if match_extra:
         extra += float(match_extra.group(1))
-    # Ищем +Forklift USD20/BL
+    # Также +Forklift и другие специфические
     match_fork = re.search(r'\+.*?Forklift\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
     if match_fork:
         extra += float(match_fork.group(1))
-    # Ищем +Label fee USD0.05/KG (Min USD25/BL) — извлечём пока как доп. сбор, но лучше обработать отдельно
-    match_label = re.search(r'\+.*?Label fee\s*USD(\d+(?:\.\d+)?)/KG', line, re.I)
-    if match_label:
-        # Не добавляем сразу, т.к. зависит от веса. Вернём в виде специального маркера?
-        # Пока добавим позже в process_offer, передадим эту информацию
-        # Для упрощения: запишем найденный label fee в глобальную переменную? Нехорошо.
-        # Лучше вернуть дополнительный словарь. Но для простоты пока добавим как extra = 0, а label fee обработаем в parse_common_fees.
-        # В общем блоке тоже может быть label fee. Решим: если есть в строке, передадим в process_offer через специальный флаг.
-        # Я сделаю так: возвращаем rate, extra, и дополнительно извлекаем label_fee_per_kg и label_min.
-        pass
     return rate, extra
 
 def extract_inline_fees(line):
-    """Извлекает из строки перевозчика сборы, зависящие от веса (label fee, back board и т.п.)"""
+    """Извлекает из строки перевозчика сборы, зависящие от веса (label fee)"""
     fees = []
-    # Label fee USD0.05/KG (Min USD25/BL)
     match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', line, re.I)
     if match:
         fees.append(('label', float(match.group(1)), float(match.group(2))))
-    # Forklift (уже как фикс в extra, но можно и тут)
-    # Back board fee в строке?
-    match = re.search(r'back board fee\s*USD(\d+(?:\.\d+)?)/KG', line, re.I)
-    if match:
-        fees.append(('backboard', float(match.group(1)), None))
     return fees
 
 def parse_common_fees(fees_block, origin_airport, weight):
@@ -205,7 +207,7 @@ def parse_common_fees(fees_block, origin_airport, weight):
     match = re.search(r'back board fee\s*USD(\d+(?:\.\d+)?)/KG', fees_block, re.I)
     if match:
         total += float(match.group(1)) * weight
-    # Label fee
+    # Label fee в общем блоке
     match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', fees_block, re.I)
     if match:
         per_kg = float(match.group(1))
@@ -228,30 +230,35 @@ def parse_common_fees(fees_block, origin_airport, weight):
     return total
 
 def process_offer(offer_line, common_fees_block, weight):
+    offer_line = fix_typos(offer_line)
     airline_code = extract_airline_code(offer_line)
     if not airline_code:
         return None
     airline_name = AIRLINES.get(airline_code, airline_code)
+
     route_str = extract_route(offer_line)
     if not route_str:
         return None
     route_pretty = parse_route(route_str)
     origin_airport = route_str.split('-')[0].upper()
+
     freq = extract_frequency(offer_line)
     if not freq:
         return None
     freq_pretty = parse_frequency(freq)
+
     etd = extract_etd(offer_line)
     if not etd:
         return None
     etd_pretty = parse_etd(etd)
+
     rate, extra = extract_rate_and_extra_from_line(offer_line)
     if rate is None:
         return None
+
     total = rate * weight + extra
-    # Добавляем общие сборы
     total += parse_common_fees(common_fees_block, origin_airport, weight)
-    # Обрабатываем инлайн сборы из строки перевозчика (label fee и т.п.)
+
     inline_fees = extract_inline_fees(offer_line)
     for fee_type, val, min_val in inline_fees:
         if fee_type == 'label':
@@ -259,8 +266,7 @@ def process_offer(offer_line, common_fees_block, weight):
             if min_val:
                 fee_amount = max(fee_amount, min_val)
             total += fee_amount
-        elif fee_type == 'backboard':
-            total += val * weight
+
     total_rounded = round(total)
     result = f"{total_rounded} долларов {airline_name}, {route_pretty}, {freq_pretty}, места с {etd_pretty}"
     return result
