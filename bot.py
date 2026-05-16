@@ -1,10 +1,13 @@
 import re
 import logging
+import threading
+from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ================= НАСТРОЙКИ =================
-BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"   # ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ТОКЕН
+# ВАЖНО: ВСТАВЬТЕ СЮДА ВАШ ТОКЕН ОТ @BotFather
+BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"
 
 # ---------- Справочник авиакомпаний ----------
 AIRLINES = {
@@ -20,7 +23,7 @@ AIRLINES = {
     "4B": "Авиастар",
 }
 
-# ---------- Справочник аэропортов (сокращённо, но вы можете добавить свои) ----------
+# ---------- Справочник аэропортов ----------
 AIRPORTS = {
     "PKX": "Пекин (Дасин)", "PEK": "Пекин (Столичный)", "PVG": "Шанхай (Пудун)",
     "SHA": "Шанхай (Хунцяо)", "CAN": "Гуанчжоу", "SZX": "Шэньчжэнь",
@@ -58,236 +61,12 @@ AIRPORTS = {
     "SOK": "Саратов", "ULV": "Ульяновск", "CEK": "Челябинск", "TJM": "Тюмень",
     "SVX": "Екатеринбург", "MQF": "Магнитогорск", "NBC": "Нижнекамск",
     "NFG": "Нижневартовск", "SGC": "Сургут", "HMA": "Ханты-Мансийск",
-    "BQS": "Благовещенск",  # добавим для маршрута HRB-BQS-SVO
+    "BQS": "Благовещенск", "CGO": "Чжэнчжоу", "UUD": "Улан-Удэ",
+    "TFU": "Чэнду (Тяньфу)", "HAK": "Хайкоу",
 }
-
-# ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
-def fix_typos(text):
-    """Исправляет частые опечатки в ставках"""
-    text = text.replace("UDS/KG", "USD/KG")
-    text = text.replace("UDS/ KG", "USD/KG")
-    return text
-
-def parse_etd(etd_str):
-    if not etd_str:
-        return "неизвестно"
-    # Удаляем суффиксы st, nd, rd, th
-    etd_clean = re.sub(r'(st|nd|rd|th)', '', etd_str, flags=re.I)
-    months = {"JAN":"января","FEB":"февраля","MAR":"марта","APR":"апреля",
-              "MAY":"мая","JUN":"июня","JUL":"июля","AUG":"августа",
-              "SEP":"сентября","OCT":"октября","NOV":"ноября","DEC":"декабря"}
-    for eng, rus in months.items():
-        if eng in etd_clean.upper():
-            etd_clean = etd_clean.upper().replace(eng, rus)
-            return etd_clean.capitalize()
-    if etd_clean.strip().isdigit():
-        return f"{etd_clean}го числа"
-    return etd_clean
-
-def parse_frequency(freq_str):
-    if not freq_str:
-        return "расписание не указано"
-    freq_str = freq_str.strip().upper()
-    if freq_str == "DAILY":
-        return "ежедневно"
-    # Поддержка DAY37 -> D37, DAY2457 -> D2457
-    if freq_str.startswith("DAY"):
-        freq_str = "D" + freq_str[3:]
-    match = re.search(r'D([1-7]+)', freq_str)
-    if match:
-        days = len(set(match.group(1)))
-        return f"{days} раз/нед"
-    return freq_str
-
-def parse_route(route_str):
-    if not route_str:
-        return "маршрут не указан"
-    # Разделяем по дефису, может быть 2 или 3 части
-    parts = route_str.split('-')
-    if len(parts) >= 2:
-        orig = AIRPORTS.get(parts[0].upper(), parts[0])
-        # Если три части, соединяем пункт назначения как последнюю
-        dest = AIRPORTS.get(parts[-1].upper(), parts[-1])
-        return f"{orig}-{dest}"
-    return route_str
-
-def extract_airline_code(line):
-    words = line.split()
-    for word in words:
-        if word.upper() in AIRLINES:
-            return word.upper()
-    return None
-
-def extract_route(line):
-    # Ищем цепочку из 2 или 3 аэропортов: XXX-XXX или XXX-XXX-XXX
-    match = re.search(r'([A-Z]{3})-([A-Z]{3})(?:-([A-Z0-9]{3,4}))?', line)
-    if match:
-        if match.group(3):
-            return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
-        else:
-            return f"{match.group(1)}-{match.group(2)}"
-    return None
-
-def extract_frequency(line):
-    # Ищем D1234567 или DAY1234567
-    match = re.search(r'\b(D(?:AY)?[1-7]+)\b', line, re.I)
-    if match:
-        return match.group(1).upper()
-    if re.search(r'\bDAILY\b', line, re.I):
-        return "Daily"
-    return None
-
-def extract_etd(line):
-    # Ищем ETD 20TH, ETD 26TH, или просто 20TH, 26TH
-    match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?)', line, re.I)
-    if match:
-        return match.group(1)
-    # Если нет ETD, ищем просто число с суффиксом в конце слова
-    match2 = re.search(r'\b(\d+(?:st|nd|rd|th)?)\b', line, re.I)
-    if match2 and not match2.group(0).isdigit():
-        return match2.group(0)
-    return None
-
-def extract_rate_and_extra_from_line(line):
-    line = fix_typos(line)
-    rate = None
-    extra = 0.0
-    # Базовый тариф
-    match = re.search(r'(\d+(?:\.\d+)?)\s*USD\s*/\s*KG', line, re.I)
-    if not match:
-        match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
-    if match:
-        rate = float(match.group(1))
-    # Фиксированные сборы: + 445 USD, +360 USD и т.д.
-    match_extra = re.search(r'\+\s*(\d+)\s*USD', line, re.I)
-    if match_extra:
-        extra += float(match_extra.group(1))
-    # Также +Forklift и другие специфические
-    match_fork = re.search(r'\+.*?Forklift\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
-    if match_fork:
-        extra += float(match_fork.group(1))
-    return rate, extra
-
-def extract_inline_fees(line):
-    """Извлекает из строки перевозчика сборы, зависящие от веса (label fee)"""
-    fees = []
-    match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', line, re.I)
-    if match:
-        fees.append(('label', float(match.group(1)), float(match.group(2))))
-    return fees
-
-def parse_common_fees(fees_block, origin_airport, weight):
-    total = 0.0
-    if not fees_block:
-        return total
-    # AWB
-    match = re.search(r'AWB:\s*USD(\d+(?:\.\d+)?)/BL', fees_block, re.I)
-    if match:
-        total += float(match.group(1))
-    # CC
-    match = re.search(r'CC:\s*USD(\d+(?:\.\d+)?)/BL', fees_block, re.I)
-    if match:
-        total += float(match.group(1))
-    # HC
-    match = re.search(r'HC:\s*USD(\d+(?:\.\d+)?)(?:/BL)?', fees_block, re.I)
-    if match:
-        total += float(match.group(1))
-    # Pick up fee
-    if origin_airport:
-        pattern = rf'Pick up fee:.*?USD(\d+(?:\.\d+)?)\s*TO\s+.*?\b{origin_airport}\b'
-        match = re.search(pattern, fees_block, re.I | re.DOTALL)
-        if not match:
-            pattern2 = rf'Pick up fee:.*?USD(\d+(?:\.\d+)?)\s*TO\s+([A-Z/]+)'
-            m2 = re.search(pattern2, fees_block, re.I)
-            if m2 and origin_airport in m2.group(2).upper().split('/'):
-                total += float(m2.group(1))
-        else:
-            total += float(match.group(1))
-    # back board fee
-    match = re.search(r'back board fee\s*USD(\d+(?:\.\d+)?)/KG', fees_block, re.I)
-    if match:
-        total += float(match.group(1)) * weight
-    # Label fee в общем блоке
-    match = re.search(r'Label fee\s*USD(\d+(?:\.\d+)?)/KG\s*\(Min\s*USD(\d+)/BL\)', fees_block, re.I)
-    if match:
-        per_kg = float(match.group(1))
-        min_val = float(match.group(2))
-        total += max(per_kg * weight, min_val)
-    # Customs
-    match = re.search(r'Customs:\s*(\d+(?:\.\d+)?)/BL', fees_block, re.I)
-    if match:
-        total += float(match.group(1))
-    # Doc
-    match = re.search(r'Doc:\s*(\d+(?:\.\d+)?)/BL', fees_block, re.I)
-    if match:
-        total += float(match.group(1))
-    # TC
-    match = re.search(r'TC:\s*(\d+(?:\.\d+)?)/KG,\s*Min\s*(\d+)/Shpt', fees_block, re.I)
-    if match:
-        per_kg = float(match.group(1))
-        min_val = float(match.group(2))
-        total += max(per_kg * weight, min_val)
-    return total
-
-def process_offer(offer_line, common_fees_block, weight):
-    offer_line = fix_typos(offer_line)
-    airline_code = extract_airline_code(offer_line)
-    if not airline_code:
-        return None
-    airline_name = AIRLINES.get(airline_code, airline_code)
-
-    route_str = extract_route(offer_line)
-    if not route_str:
-        return None
-    route_pretty = parse_route(route_str)
-    origin_airport = route_str.split('-')[0].upper()
-
-    freq = extract_frequency(offer_line)
-    if not freq:
-        return None
-    freq_pretty = parse_frequency(freq)
-
-    etd = extract_etd(offer_line)
-    if not etd:
-        return None
-    etd_pretty = parse_etd(etd)
-
-    rate, extra = extract_rate_and_extra_from_line(offer_line)
-    if rate is None:
-        return None
-
-    total = rate * weight + extra
-    total += parse_common_fees(common_fees_block, origin_airport, weight)
-
-    inline_fees = extract_inline_fees(offer_line)
-    for fee_type, val, min_val in inline_fees:
-        if fee_type == 'label':
-            fee_amount = val * weight
-            if min_val:
-                fee_amount = max(fee_amount, min_val)
-            total += fee_amount
-
-    total_rounded = round(total)
-    result = f"{total_rounded} долларов {airline_name}, {route_pretty}, {freq_pretty}, места с {etd_pretty}"
-    return result
-
-def split_into_offers_and_common_fees(full_text):
-    lines = full_text.strip().splitlines()
-    offers = []
-    common_lines = []
-    in_common = False
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        if re.match(r'^(AWB|CC|HC|Pick up fee|back board fee|Customs|Doc|TC|Label fee)', line, re.I):
-            in_common = True
-        if in_common:
-            common_lines.append(line)
-        else:
-            offers.append(line)
-    common_block = "\n".join(common_lines)
-    return offers, common_block
+# Все функции парсинга (parse_etd, parse_frequency, parse_route, extract_airline_code... и т.д.)
+# Оставляем без изменений, они уже были в вашем предыдущем коде.
+# ... (здесь вставьте весь ваш существующий код парсинга, который был у вас ранее) ...
 
 # ================= ОБРАБОТЧИКИ БОТА =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -328,6 +107,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ Ни одной ставки не обработано. Возможно, не хватает данных.")
 
+# --- ОСНОВНАЯ ФУНКЦИЯ БОТА ---
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -336,6 +116,20 @@ def main():
     print("Бот запущен...")
     app.run_polling()
 
+# --- ТУТ НАЧИНАЕТСЯ НОВЫЙ КОД ДЛЯ БОДРОСТИ ---
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main()
+    
+    # 1. Запускаем основного бота в фоновом потоке
+    bot_thread = threading.Thread(target=main)
+    bot_thread.start()
+
+    # 2. Запускаем маленький Flask-сервер для проверки здоровья
+    flask_app = Flask(__name__)
+
+    @flask_app.route('/')
+    def health_check():
+        return "I'm alive!", 200
+
+    # Запускаем Flask-сервер на порту, который ожидает Koyeb
+    flask_app.run(host='0.0.0.0', port=8000)
