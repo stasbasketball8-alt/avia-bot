@@ -1,14 +1,12 @@
 import re
 import logging
 import threading
-import os
-from flask import Flask
+from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ================= НАСТРОЙКИ =================
-# ВСТАВЬТЕ ВАШ ТОКЕН, ПОЛУЧЕННЫЙ ОТ @BotFather
-BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"
+BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"   # ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ТОКЕН
 
 # ---------- Справочник авиакомпаний ----------
 AIRLINES = {
@@ -24,7 +22,7 @@ AIRLINES = {
     "4B": "Авиастар",
 }
 
-# ---------- Справочник аэропортов (добавлены все недостающие) ----------
+# ---------- Справочник аэропортов ----------
 AIRPORTS = {
     "PKX": "Пекин (Дасин)", "PEK": "Пекин (Столичный)", "PVG": "Шанхай (Пудун)",
     "SHA": "Шанхай (Хунцяо)", "CAN": "Гуанчжоу", "SZX": "Шэньчжэнь",
@@ -66,13 +64,7 @@ AIRPORTS = {
     "TFU": "Чэнду (Тяньфу)", "HAK": "Хайкоу",
 }
 
-# ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
-def fix_typos(text):
-    """Исправляет опечатки: UDS/KG -> USD/KG и т.п."""
-    text = text.replace("UDS/KG", "USD/KG")
-    text = text.replace("UDS/ KG", "USD/KG")
-    return text
-
+# ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (парсер) ----------
 def parse_etd(etd_str):
     if not etd_str:
         return "неизвестно"
@@ -146,9 +138,9 @@ def extract_etd(line):
     return None
 
 def extract_rate_and_extra_from_line(line):
-    line = fix_typos(line)
     rate = None
     extra = 0.0
+    line = line.replace("UDS/KG", "USD/KG").replace("UDS/ KG", "USD/KG")
     match = re.search(r'(\d+(?:\.\d+)?)\s*USD\s*/\s*KG', line, re.I)
     if not match:
         match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
@@ -214,7 +206,7 @@ def parse_common_fees(fees_block, origin_airport, weight):
     return total
 
 def process_offer(offer_line, common_fees_block, weight):
-    offer_line = fix_typos(offer_line)
+    offer_line = offer_line.replace("UDS/KG", "USD/KG")
     airline_code = extract_airline_code(offer_line)
     if not airline_code:
         return None
@@ -305,6 +297,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ Ни одной ставки не обработано. Возможно, не хватает данных.")
 
+# --- ОСНОВНАЯ ФУНКЦИЯ БОТА (запускается в главном потоке) ---
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -313,20 +306,22 @@ def main():
     print("Бот запущен...")
     app.run_polling()
 
-# ================= ЗАПУСК С ВЕБ-СЕРВЕРОМ ДЛЯ ПИНГА =================
+# --- ФУНКЦИЯ ДЛЯ ЗАПУСКА FLASK В ФОНОВОМ ПОТОКЕ ---
+def run_flask():
+    flask_app = Flask(__name__)
+    @flask_app.route('/', methods=['GET', 'HEAD'])
+    def health_check():
+        if request.method == 'HEAD':
+            return '', 200
+        return "I'm alive!", 200
+    # Запускаем Flask на порту 8000, без перезагрузчика
+    flask_app.run(host='0.0.0.0', port=8000, use_reloader=False)
+
+# --- ТОЧКА ВХОДА ---
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    
-    # Запускаем бота в отдельном потоке
-    bot_thread = threading.Thread(target=main)
-    bot_thread.start()
-    
-    # Создаём Flask-приложение для проверки здоровья
-    flask_app = Flask(__name__)
-    
-    @flask_app.route('/')
-    def health_check():
-        return "OK", 200
-    
-    # Запускаем Flask на порту, ожидаемом Render (обычно 8000)
-    flask_app.run(host='0.0.0.0', port=8000)
+    # Запускаем Flask в фоновом потоке (daemon=True, чтобы он закрылся при завершении главного)
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    # Запускаем основного бота в главном потоке
+    main()
