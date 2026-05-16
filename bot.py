@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ================= НАСТРОЙКИ =================
-BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"   # ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ТОКЕН
+BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"   # ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ТОКЕН
 
 # ---------- Справочник авиакомпаний ----------
 AIRLINES = {
