@@ -1,6 +1,7 @@
 import re
 import logging
 import threading
+import requests
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -8,7 +9,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # ================= НАСТРОЙКИ =================
 BOT_TOKEN = "8250112079:AAHEkW9AyhgeAXfMhP_SjmW_X-FTh4vlTL0"   # ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ТОКЕН
 
-# ---------- Справочник авиакомпаний (код -> русское имя) ----------
+# ---------- Справочник авиакомпаний ----------
 AIRLINES = {
     "SU": "Аэрофлот",
     "3U": "Сычуаньские линии",
@@ -205,14 +206,14 @@ def parse_frequency(freq_str):
 def parse_route(route_str):
     if not route_str:
         return "маршрут не указан"
-    segments = route_str.split('-')
+    # удаляем комментарии в скобках
+    route_clean = re.sub(r'\(.*?\)', '', route_str).strip()
+    segments = route_clean.split('-')
     translated = [AIRPORTS.get(seg.upper(), seg) for seg in segments]
     return '-'.join(translated)
 
 def extract_airline_code(line):
-    # Удаляем "BY " в начале
     line = re.sub(r'^BY\s+', '', line.strip())
-    # Ищем слова из 2-3 символов (буквы и цифры) из списка AIRLINES
     words = re.findall(r'\b([A-Z0-9]{2,3})\b', line)
     for word in words:
         if word in AIRLINES:
@@ -220,7 +221,7 @@ def extract_airline_code(line):
     return None
 
 def extract_route(line):
-    # Ищем последовательность из 2 или 3 аэропортов
+    # ищем 2 или 3 аэропорта, разделённых дефисом
     match = re.search(r'([A-Z]{3})-([A-Z]{3})(?:-([A-Z]{3}))?', line)
     if match:
         if match.group(3):
@@ -238,11 +239,9 @@ def extract_frequency(line):
     return None
 
 def extract_etd(line):
-    # Ищем ETD число с суффиксом
     match = re.search(r'ETD\s+(\d+(?:st|nd|rd|th)?)', line, re.I)
     if match:
         return match.group(1)
-    # Ищем просто число с суффиксом (не цифры)
     match2 = re.search(r'(?<!\d)(\d+(?:st|nd|rd|th)?)(?!\d)', line, re.I)
     if match2 and not match2.group(1).isdigit():
         return match2.group(1)
@@ -252,17 +251,14 @@ def extract_rate_and_extra_from_line(line):
     rate = None
     extra = 0.0
     line = line.replace("UDS/KG", "USD/KG").replace("UDS/ KG", "USD/KG")
-    # Тариф
     match = re.search(r'(\d+(?:\.\d+)?)\s*USD\s*/\s*KG', line, re.I)
     if not match:
         match = re.search(r'(\d+(?:\.\d+)?)\s*/\s*KG', line)
     if match:
         rate = float(match.group(1))
-    # Дополнительная фиксированная сумма
     match_extra = re.search(r'\+\s*(\d+)\s*USD', line, re.I)
     if match_extra:
         extra += float(match_extra.group(1))
-    # Forklift
     match_fork = re.search(r'\+.*?Forklift\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
     if match_fork:
         extra += float(match_fork.group(1))
@@ -276,11 +272,6 @@ def extract_inline_fees(line):
     return fees
 
 def parse_common_fees(fees_block, origin_airport, dest_airport, weight):
-    """
-    Разбирает блок общих сборов. Поддерживает условия вида:
-    AWB: USD35/BL IF HRB USD50/BL
-    CC: USD40/BL IF HRB USD50/BL
-    """
     total = 0.0
     if not fees_block:
         return total
@@ -289,83 +280,70 @@ def parse_common_fees(fees_block, origin_airport, dest_airport, weight):
         line = line.strip()
         if not line:
             continue
-        # Обрабатываем каждую строку независимо
+        # обрабатываем каждый тип сбора
         # AWB
         if re.match(r'AWB:', line, re.I):
-            # Поиск условия IF X
-            condition_match = re.search(r'IF\s+([A-Z]{3})\s+USD(\d+(?:\.\d+)?)/BL', line, re.I)
-            if condition_match:
-                airport_cond = condition_match.group(1).upper()
-                value_if = float(condition_match.group(2))
-                # Если условие совпадает с аэропортом отправления или назначения
-                if airport_cond in (origin_airport, dest_airport):
-                    total += value_if
-                else:
-                    # Ищем значение по умолчанию (до IF)
-                    default_match = re.search(r'AWB:\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
-                    if default_match:
-                        total += float(default_match.group(1))
+            # проверяем условие IF
+            match_if = re.search(r'IF\s+([A-Z]{3})', line, re.I)
+            if match_if:
+                airport_cond = match_if.group(1).upper()
+                if airport_cond == origin_airport or airport_cond == dest_airport:
+                    match_val = re.search(r'USD(\d+(?:\.\d+)?)/BL', line, re.I)
+                    if match_val:
+                        total += float(match_val.group(1))
             else:
-                # Нет условия, просто значение
-                default_match = re.search(r'AWB:\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
-                if default_match:
-                    total += float(default_match.group(1))
+                match_val = re.search(r'USD(\d+(?:\.\d+)?)/BL', line, re.I)
+                if match_val:
+                    total += float(match_val.group(1))
         # CC
         elif re.match(r'CC:', line, re.I):
-            condition_match = re.search(r'IF\s+([A-Z]{3})\s+USD(\d+(?:\.\d+)?)/BL', line, re.I)
-            if condition_match:
-                airport_cond = condition_match.group(1).upper()
-                value_if = float(condition_match.group(2))
-                if airport_cond in (origin_airport, dest_airport):
-                    total += value_if
-                else:
-                    default_match = re.search(r'CC:\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
-                    if default_match:
-                        total += float(default_match.group(1))
+            match_if = re.search(r'IF\s+([A-Z]{3})', line, re.I)
+            if match_if:
+                airport_cond = match_if.group(1).upper()
+                if airport_cond == origin_airport or airport_cond == dest_airport:
+                    match_val = re.search(r'USD(\d+(?:\.\d+)?)/BL', line, re.I)
+                    if match_val:
+                        total += float(match_val.group(1))
             else:
-                default_match = re.search(r'CC:\s*USD(\d+(?:\.\d+)?)/BL', line, re.I)
-                if default_match:
-                    total += float(default_match.group(1))
+                match_val = re.search(r'USD(\d+(?:\.\d+)?)/BL', line, re.I)
+                if match_val:
+                    total += float(match_val.group(1))
         # HC
         elif re.match(r'HC:', line, re.I):
-            # HC: USD100 (может быть без привязки)
-            # Или HC: USD0.05/KG (за кг)
-            # Или HC: USD0.05/KG to CAN (привязка)
-            match_to = re.search(r'to\s+([A-Z]{3})', line, re.I)
-            if match_to:
-                airport_code = match_to.group(1).upper()
-                if airport_code == origin_airport or airport_code == dest_airport:
-                    # Ищем значение за кг или фикс
-                    match_val = re.search(r'USD(\d+(?:\.\d+)?)/KG', line, re.I)
+            match_if = re.search(r'IF\s+([A-Z]{3})', line, re.I)
+            if match_if:
+                airport_cond = match_if.group(1).upper()
+                if airport_cond == origin_airport or airport_cond == dest_airport:
+                    # HC может быть в USD/KG или фиксированная сумма
+                    match_val = re.search(r'USD(\d+(?:\.\d+)?)(?:/KG)?', line, re.I)
                     if match_val:
-                        total += float(match_val.group(1)) * weight
-                    else:
-                        match_fix = re.search(r'USD(\d+(?:\.\d+)?)(?!/KG)', line, re.I)
-                        if match_fix:
-                            total += float(match_fix.group(1))
+                        val = float(match_val.group(1))
+                        if '/KG' in line:
+                            total += val * weight
+                        else:
+                            total += val
             else:
-                # Нет привязки - применяем ко всем
-                match_val = re.search(r'USD(\d+(?:\.\d+)?)/KG', line, re.I)
+                match_val = re.search(r'USD(\d+(?:\.\d+)?)(?:/KG)?', line, re.I)
                 if match_val:
-                    total += float(match_val.group(1)) * weight
-                else:
-                    match_fix = re.search(r'USD(\d+(?:\.\d+)?)(?!/KG)', line, re.I)
-                    if match_fix:
-                        total += float(match_fix.group(1))
-        # Pick up fee
+                    val = float(match_val.group(1))
+                    if '/KG' in line:
+                        total += val * weight
+                    else:
+                        total += val
+        # Pick up fee (может содержать несколько условий через запятую)
         elif re.match(r'Pick up fee', line, re.I):
-            if origin_airport:
-                # Ищем USDxxx TO origin_airport
-                pattern = rf'USD(\d+(?:\.\d+)?)\s*TO\s+.*?\b{origin_airport}\b'
-                match = re.search(pattern, line, re.I)
-                if not match:
-                    # Возможно перечисление через слеш: TO PKX/PEK
-                    pattern2 = rf'USD(\d+(?:\.\d+)?)\s*TO\s+([A-Z/]+)'
-                    m2 = re.search(pattern2, line, re.I)
-                    if m2 and origin_airport in m2.group(2).upper().split('/'):
-                        total += float(m2.group(1))
-                else:
-                    total += float(match.group(1))
+            # разбиваем строку на части по запятым
+            parts = line.split(',')
+            best_fee = 0.0
+            for part in parts:
+                match_to = re.search(r'USD(\d+(?:\.\d+)?)\s*TO\s+([A-Z/]+)', part, re.I)
+                if match_to:
+                    fee = float(match_to.group(1))
+                    airports = match_to.group(2).upper().split('/')
+                    if origin_airport in airports:
+                        best_fee = fee
+                        break
+            total += best_fee
         # back board fee
         elif re.match(r'back board fee', line, re.I):
             match = re.search(r'USD(\d+(?:\.\d+)?)/KG', line, re.I)
@@ -398,39 +376,39 @@ def parse_common_fees(fees_block, origin_airport, dest_airport, weight):
     return total
 
 def process_offer(offer_line, common_fees_block, weight):
-    # Очистка и предобработка
     offer_line = offer_line.replace("UDS/KG", "USD/KG").replace("UDS/ KG", "USD/KG")
+    # убираем BY в начале
     offer_line = re.sub(r'^BY\s+', '', offer_line.strip())
     
     airline_code = extract_airline_code(offer_line)
     if not airline_code:
         return None
     airline_name = AIRLINES.get(airline_code, airline_code)
-
+    
     route_str = extract_route(offer_line)
     if not route_str:
         return None
     route_pretty = parse_route(route_str)
     origin_airport = route_str.split('-')[0].upper()
     dest_airport = route_str.split('-')[-1].upper()
-
+    
     freq = extract_frequency(offer_line)
     if not freq:
         return None
     freq_pretty = parse_frequency(freq)
-
+    
     etd = extract_etd(offer_line)
     if not etd:
         return None
     etd_pretty = parse_etd(etd)
-
+    
     rate, extra = extract_rate_and_extra_from_line(offer_line)
     if rate is None:
         return None
-
+    
     total = rate * weight + extra
     total += parse_common_fees(common_fees_block, origin_airport, dest_airport, weight)
-
+    
     inline_fees = extract_inline_fees(offer_line)
     for fee_type, val, min_val in inline_fees:
         if fee_type == 'label':
@@ -438,7 +416,7 @@ def process_offer(offer_line, common_fees_block, weight):
             if min_val:
                 fee_amount = max(fee_amount, min_val)
             total += fee_amount
-
+    
     total_rounded = round(total)
     result = f"{total_rounded} долларов {airline_name}, {route_pretty}, {freq_pretty}, места с {etd_pretty}"
     return result
@@ -452,7 +430,6 @@ def split_into_offers_and_common_fees(full_text):
         line = line.strip()
         if not line:
             continue
-        # Если строка начинается с ключевых слов сборов, переключаемся в блок общих сборов
         if re.match(r'^(AWB|CC|HC|Pick up fee|back board fee|Customs|Doc|TC|Label fee)', line, re.I):
             in_common = True
         if in_common:
@@ -501,8 +478,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ Ни одной ставки не обработано. Возможно, не хватает данных.")
 
-# --- ОСНОВНАЯ ФУНКЦИЯ БОТА ---
-def main():
+# --- ЗАПУСК БОТА (В ГЛАВНОМ ПОТОКЕ) С ПРИНУДИТЕЛЬНЫМ СБРОСОМ WEBHOOK ---
+def run_bot():
+    try:
+        resp = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook")
+        print(f"Webhook deleted: {resp.status_code}")
+    except Exception as e:
+        print(f"Error deleting webhook: {e}")
+    
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("weight", set_weight))
@@ -510,7 +493,7 @@ def main():
     print("Бот запущен...")
     app.run_polling()
 
-# --- ЗАПУСК FLASK В ФОНОВОМ ПОТОКЕ ДЛЯ UPTIMEROBOT ---
+# --- FLASK ДЛЯ HEALTHCHECK (ФОНОВЫЙ ПОТОК) ---
 def run_flask():
     flask_app = Flask(__name__)
     @flask_app.route('/', methods=['GET', 'HEAD'])
@@ -522,8 +505,8 @@ def run_flask():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    # Запускаем Flask в фоновом потоке
+    # Запускаем Flask в фоне
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    # Запускаем основного бота в главном потоке
-    main()
+    # Бот в главном потоке
+    run_bot()
